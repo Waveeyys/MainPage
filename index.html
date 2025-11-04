@@ -112,8 +112,6 @@
                    placeholder="Enter your key or code">
         </div>
 
-        <!-- Repository Links Section (Now removed, action moved to button) -->
-        
         <!-- Action Buttons -->
         <div class="flex justify-between space-x-4">
             
@@ -141,7 +139,9 @@
 
     <script>
         const SECRET_CODE = "Wavey";
-        const REPO_URL = "https://github.com/Waveeyys?tab=repositories"; // <-- !!! CHANGE THIS URL !!!
+        // --- UPDATED URL ---
+        const REPO_URL = "https://github.com/Waveeyys?tab=repositories"; 
+        
         let currentBuild = 'stable';
         
         const builds = {
@@ -183,7 +183,7 @@
             const key = document.getElementById('productKey').value.trim();
 
             if (button.dataset.action === 'continue') {
-                // If the button is in the 'Continue' state, redirect to the repository
+                // If the button is in the 'Continue' state, redirect to the repository in a new tab
                 window.open(REPO_URL, '_blank');
             } else {
                 // Otherwise, initiate the download (or key validation)
@@ -296,7 +296,6 @@
         async function initiateDownload(key) {
             const messageBox = document.getElementById('validationMessage');
             const button = document.getElementById('mainActionButton');
-            const originalButtonHTML = button.innerHTML;
 
             messageBox.classList.add('hidden');
             messageBox.classList.remove('text-red-400', 'text-accent-stable', 'text-accent-nightly');
@@ -348,5 +347,3 @@
     </script>
 </body>
 </html>
-
-
