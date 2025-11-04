@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Loader / Repository Access</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bg-dark': '#0a0a0a',
+                        'card-dark': '#151515',
+                        'border-dark': '#2a2a2a',
+                        // Reusing Nightly accent for the "Continue" button glow
+                        'accent-stable': '#00e676', 
+                        'accent-nightly': '#a020f0', 
+                        'text-light': '#e0e0e0',
+                        'text-muted': '#888888',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'glow-stable': '0 0 15px rgba(0, 230, 118, 0.4), 0 0 5px rgba(0, 230, 118, 0.2)',
+                        'glow-nightly': '0 0 15px rgba(160, 32, 240, 0.4), 0 0 5px rgba(160, 32, 240, 0.2)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom glow effects */
+        .glow-border-stable {
+            box-shadow: 0 0 0 1px var(--tw-accent-stable), var(--tw-shadow-glow-stable);
+        }
+        .glow-border-nightly {
+            box-shadow: 0 0 0 1px var(--tw-accent-nightly), var(--tw-shadow-glow-nightly);
+        }
+        .imgui-input-glow:focus {
+            outline: none;
+            border-color: #a020f0; 
+            box-shadow: 0 0 0 1px #a020f0, 0 0 10px rgba(160, 32, 240, 0.3);
+        }
+
+        :root {
+            --tw-accent-stable: #00e676;
+            --tw-accent-nightly: #a020f0;
+            --tw-shadow-stable: 0 0 15px rgba(0, 230, 118, 0.4), 0 0 5px rgba(0, 230, 118, 0.2);
+            --tw-shadow-nightly: 0 0 15px rgba(160, 32, 240, 0.4), 0 0 5px rgba(160, 32, 240, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-bg-dark text-text-light min-h-screen flex items-center justify-center font-sans p-4">
+
+    <!-- Main Container (The Loader Card) -->
+    <div class="w-full max-w-lg bg-card-dark rounded-xl shadow-2xl border border-border-dark p-6 md:p-8">
+
+        <h1 class="text-3xl font-extrabold mb-1">
+            Download Loader
+        </h1>
+        <p class="text-text-muted mb-6">
+            Enter product key, or the secret code to access repositories.
+        </p>
+        
+        <!-- Build Type Selector -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-text-muted mb-2">Build Type</label>
+            <div class="flex bg-border-dark rounded-lg p-1 space-x-1" role="tablist">
+                
+                <button id="stableBtn" 
+                        onclick="selectBuild('stable')"
+                        class="flex-1 flex items-center justify-center p-3 rounded-lg transition-colors duration-200 
+                               bg-card-dark text-text-light shadow-glow-stable">
+                    <span data-lucide="shield" class="w-5 h-5 mr-2"></span>
+                    Stable
+                </button>
+                
+                <button id="nightlyBtn" 
+                        onclick="selectBuild('nightly')"
+                        class="flex-1 flex items-center justify-center p-3 rounded-lg transition-colors duration-200 
+                               text-text-muted hover:bg-card-dark hover:shadow-md">
+                    <span data-lucide="flask-conical" class="w-5 h-5 mr-2"></span>
+                    Nightly
+                </button>
+            </div>
+        </div>
+
+        <!-- Dynamic Status/Description Box -->
+        <div id="statusBox" class="p-4 rounded-lg transition-all duration-300 mb-6 bg-accent-stable/20 glow-border-stable text-accent-stable">
+            <div class="flex items-start">
+                <span id="statusIcon" data-lucide="shield-half" class="w-5 h-5 mr-3 flex-shrink-0 mt-0.5"></span>
+                <div>
+                    <p id="statusTitle" class="font-semibold">Stable release build</p>
+                    <p id="statusDescription" class="text-sm text-text-muted">
+                        Thoroughly tested and recommended for most users
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Product Key Input -->
+        <div class="mb-8">
+            <label for="productKey" class="block text-sm font-medium text-text-muted mb-2">Product Key / Secret Code</label>
+            <input type="text" id="productKey" 
+                   oninput="handleInput(this.value)"
+                   class="w-full bg-border-dark border border-border-dark p-3 rounded-lg text-text-light placeholder-text-muted/70 
+                          imgui-input-glow transition-all duration-150"
+                   placeholder="Enter your key or code">
+        </div>
+
+        <!-- Repository Links Section (Now removed, action moved to button) -->
+        
+        <!-- Action Buttons -->
+        <div class="flex justify-between space-x-4">
+            
+            <!-- Clear Button -->
+            <button onclick="clearInput()"
+                    class="px-6 py-3 bg-card-dark border border-border-dark rounded-lg text-text-muted hover:bg-border-dark/50 transition duration-150">
+                Clear
+            </button>
+            
+            <!-- Main Action Button (Dynamically changes between Download and Continue) -->
+            <button id="mainActionButton" onclick="handleActionButtonClick()"
+                    class="flex items-center justify-center px-6 py-3 rounded-lg font-semibold transition duration-200 w-2/3
+                           bg-accent-stable hover:bg-accent-stable/90 shadow-glow-stable">
+                <span data-lucide="download" class="w-5 h-5 mr-2"></span>
+                Download Stable
+            </button>
+        </div>
+        
+        <!-- Message Box for Key Validation -->
+        <div id="validationMessage" class="mt-6 text-center text-sm text-red-400 hidden">
+            <!-- Validation messages will appear here -->
+        </div>
+
+    </div>
+
+    <script>
+        const SECRET_CODE = "Wavey";
+        const REPO_URL = "https://github.com/YOUR_USERNAME/Your_Main_Repo"; // <-- !!! CHANGE THIS URL !!!
+        let currentBuild = 'stable';
+        
+        const builds = {
+            stable: {
+                title: "Stable release build",
+                description: "Thoroughly tested and recommended for most users",
+                color: 'accent-stable',
+                icon: 'shield-half',
+                buttonText: 'Download Stable',
+                shadowClass: 'shadow-glow-stable',
+                borderGlowClass: 'glow-border-stable'
+            },
+            nightly: {
+                title: "Experimental build with latest features",
+                description: "May be less stable than the stable version",
+                color: 'accent-nightly',
+                icon: 'flask-conical',
+                buttonText: 'Download Nightly',
+                shadowClass: 'shadow-glow-nightly',
+                borderGlowClass: 'glow-border-nightly'
+            }
+        };
+
+        /**
+         * Clears the input and resets the action button.
+         */
+        function clearInput() {
+            document.getElementById('productKey').value = '';
+            document.getElementById('validationMessage').classList.add('hidden');
+            // Re-apply the default download state
+            setButtonToDownloadState();
+        }
+        
+        /**
+         * Handles the main action button click: either Download or Continue.
+         */
+        function handleActionButtonClick() {
+            const button = document.getElementById('mainActionButton');
+            const key = document.getElementById('productKey').value.trim();
+
+            if (button.dataset.action === 'continue') {
+                // If the button is in the 'Continue' state, redirect to the repository
+                window.open(REPO_URL, '_blank');
+            } else {
+                // Otherwise, initiate the download (or key validation)
+                initiateDownload(key);
+            }
+        }
+
+        /**
+         * Updates the action button based on the input value.
+         * @param {string} value - The current value of the input field.
+         */
+        function handleInput(value) {
+            const trimmedValue = value.trim();
+
+            if (trimmedValue.toLowerCase() === SECRET_CODE.toLowerCase()) {
+                // Secret Code entered: Switch button to "Continue" state
+                setButtonToContinueState();
+            } else {
+                // Any other input: Switch button to "Download" state
+                setButtonToDownloadState();
+            }
+        }
+
+        /**
+         * Sets the main action button to the "Continue to Repositories" state.
+         */
+        function setButtonToContinueState() {
+            const button = document.getElementById('mainActionButton');
+            const color = builds.nightly.color; // Use Nightly color for Continue
+            const shadow = builds.nightly.shadowClass;
+
+            button.dataset.action = 'continue';
+            button.innerHTML = `<span data-lucide="log-in" class="w-5 h-5 mr-2"></span> Continue`;
+            
+            // Remove download styles
+            button.classList.remove(`bg-${builds.stable.color}`, `hover:bg-${builds.stable.color}/90`, builds.stable.shadowClass);
+            button.classList.remove(`bg-${builds.nightly.color}`, `hover:bg-${builds.nightly.color}/90`, builds.nightly.shadowClass);
+
+            // Add continue styles
+            button.classList.add(`bg-${color}`, `hover:bg-${color}/90`, shadow);
+            button.disabled = false;
+            lucide.createIcons();
+        }
+
+        /**
+         * Sets the main action button back to the "Download" state based on the current build.
+         */
+        function setButtonToDownloadState() {
+            const button = document.getElementById('mainActionButton');
+            const current = builds[currentBuild];
+            const other = builds[currentBuild === 'stable' ? 'nightly' : 'stable'];
+            
+            button.dataset.action = 'download';
+            button.innerHTML = `<span data-lucide="download" class="w-5 h-5 mr-2"></span> ${current.buttonText}`;
+            
+            // Remove all custom shadows/colors
+            button.classList.remove(builds.stable.shadowClass, builds.nightly.shadowClass);
+            button.classList.remove(`bg-${builds.stable.color}`, `hover:bg-${builds.stable.color}/90`);
+            button.classList.remove(`bg-${builds.nightly.color}`, `hover:bg-${builds.nightly.color}/90`);
+
+            // Apply current build styles
+            button.classList.add(`bg-${current.color}`, `hover:bg-${current.color}/90`, current.shadowClass);
+            button.disabled = false;
+            lucide.createIcons();
+        }
+
+        /**
+         * Handles the selection of Stable or Nightly build (logic unchanged, now calls setButtonToDownloadState).
+         * @param {string} build - 'stable' or 'nightly'
+         */
+        function selectBuild(build) {
+            currentBuild = build;
+            const downloadBtn = document.getElementById('mainActionButton');
+            const statusBox = document.getElementById('statusBox');
+
+            const current = builds[build];
+            const other = builds[build === 'stable' ? 'nightly' : 'stable'];
+
+            // 1. Update build type button styles with glow
+            document.getElementById('stableBtn').classList.remove(builds.stable.shadowClass, 'bg-card-dark', 'text-text-light');
+            document.getElementById('nightlyBtn').classList.remove(builds.nightly.shadowClass, 'bg-card-dark', 'text-text-light');
+            document.getElementById('stableBtn').classList.add('text-text-muted', 'hover:bg-card-dark', 'hover:shadow-md');
+            document.getElementById('nightlyBtn').classList.add('text-text-muted', 'hover:bg-card-dark', 'hover:shadow-md');
+
+            document.getElementById(build + 'Btn').classList.remove('text-text-muted', 'hover:bg-card-dark', 'hover:shadow-md');
+            document.getElementById(build + 'Btn').classList.add('bg-card-dark', 'text-text-light', current.shadowClass);
+            
+            // 2. Update status box content and color/glow
+            document.getElementById('statusTitle').textContent = current.title;
+            document.getElementById('statusDescription').textContent = current.description;
+
+            statusBox.classList.remove(builds.stable.borderGlowClass, builds.nightly.borderGlowClass);
+            statusBox.classList.remove(`bg-${builds.stable.color}/20`, `border-${builds.stable.color}/50`, `text-${builds.stable.color}`);
+            statusBox.classList.remove(`bg-${builds.nightly.color}/20`, `border-${builds.nightly.color}/50`, `text-${builds.nightly.color}`);
+
+            statusBox.classList.add(`bg-${current.color}/20`, `border-${current.color}/50`, `text-${current.color}`, current.borderGlowClass);
+            
+            // 3. Update download button appearance if it's currently in the Download state
+            if (document.getElementById('mainActionButton').dataset.action !== 'continue') {
+                setButtonToDownloadState();
+            }
+            
+            lucide.createIcons();
+        }
+
+        /**
+         * Placeholder for the download and key validation logic.
+         * @param {string} key - The product key entered.
+         */
+        async function initiateDownload(key) {
+            const messageBox = document.getElementById('validationMessage');
+            const button = document.getElementById('mainActionButton');
+            const originalButtonHTML = button.innerHTML;
+
+            messageBox.classList.add('hidden');
+            messageBox.classList.remove('text-red-400', 'text-accent-stable', 'text-accent-nightly');
+            
+            if (key.length === 0) {
+                messageBox.textContent = "Please enter your product key to proceed.";
+                messageBox.classList.remove('hidden');
+                messageBox.classList.add('text-red-400');
+                return;
+            }
+
+            button.disabled = true;
+            button.innerHTML = `<span data-lucide="loader-2" class="w-5 h-5 mr-2 animate-spin"></span> Validating...`;
+            lucide.createIcons(); 
+
+            // Simulate network latency (replace with your actual server fetch)
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // Demo Key Logic
+            if (key === "VALID-KEY") {
+                messageBox.classList.add(`text-${builds[currentBuild].color}`);
+                messageBox.textContent = `Key validated! Downloading the ${currentBuild} build...`;
+                messageBox.classList.remove('hidden');
+                
+                button.innerHTML = `<span data-lucide="check" class="w-5 h-5 mr-2"></span> Download Started!`;
+                lucide.createIcons();
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Revert to original download state
+                setButtonToDownloadState();
+                messageBox.classList.add('hidden');
+
+            } else {
+                messageBox.classList.add('text-red-400');
+                messageBox.textContent = "Invalid or expired product key. Please check your input.";
+                messageBox.classList.remove('hidden');
+                
+                // Revert to original download state
+                setButtonToDownloadState();
+            }
+        }
+
+        // --- Initialization ---
+        window.onload = function() {
+            selectBuild('stable');
+            setButtonToDownloadState(); // Ensure initial state is download
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>
